@@ -3,6 +3,13 @@ export default class TitleScene extends Phaser.Scene {
         super({ key: 'TitleScene' });
     }
 
+    preload() {
+        // Load game assets that will be used in GameScene
+        this.load.setBaseURL(window.location.origin);
+        this.load.svg('player', '/assets/player.svg');
+        this.load.svg('enemy', '/assets/enemy.svg');
+    }
+
     create() {
         const { width, height } = this.game.canvas;
 

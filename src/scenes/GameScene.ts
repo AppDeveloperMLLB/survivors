@@ -23,6 +23,13 @@ export default class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
     }
 
+    preload() {
+        // Load game assets
+        this.load.setBaseURL(window.location.origin);
+        this.load.svg('player', '/assets/player.svg');
+        this.load.svg('enemy', '/assets/enemy.svg');
+    }
+
     create() {
         this.player = this.physics.add.sprite(400, 300, 'player');
         this.player.setCollideWorldBounds(true);
