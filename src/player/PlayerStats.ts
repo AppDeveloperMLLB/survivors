@@ -1,17 +1,25 @@
+import { PlayerCharacterConfig } from './PlayerCharacters';
+
 export default class PlayerStats {
     private level: number = 1;
     private experience: number = 0;
     private experienceToNextLevel: number = 100;
-    private baseStats = {
-        health: 100,
-        speed: 200,
-        damage: 10
+    private baseStats: {
+        health: number;
+        speed: number;
+        damage: number;
     };
     private statModifiers = {
         health: 1,
         speed: 1,
         damage: 1
     };
+    private character: PlayerCharacterConfig;
+
+    constructor(character: PlayerCharacterConfig) {
+        this.character = character;
+        this.baseStats = { ...character.baseStats };
+    }
 
     addExperience(amount: number): number {
         this.experience += amount;
@@ -22,13 +30,18 @@ export default class PlayerStats {
             levelUps++;
         }
 
-        return levelUps;  // レベルアップした回数を返す
+        return levelUps;
     }
 
     private levelUp(): void {
         this.level++;
         this.experience -= this.experienceToNextLevel;
         this.experienceToNextLevel = Math.floor(this.experienceToNextLevel * 1.2);
+        
+        // Apply character's special ability if exists
+        if (this.character.specialAbility) {
+            this.character.specialAbility.effect(this);
+        }
     }
 
     getLevel(): number {
@@ -53,5 +66,9 @@ export default class PlayerStats {
 
     modifyStat(stat: keyof typeof this.baseStats, modifier: number): void {
         this.statModifiers[stat] *= modifier;
+    }
+
+    getCharacter(): PlayerCharacterConfig {
+        return this.character;
     }
 }
