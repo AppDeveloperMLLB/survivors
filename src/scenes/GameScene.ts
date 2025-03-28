@@ -126,7 +126,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private gameOver(): void {
-        this.scene.pause();
+        this.enemies.clear(true, true); // 全ての敵を削除
+        this.physics.pause(); // 物理エンジンを停止
         const { width, height } = this.game.canvas;
         
         const gameOverText = this.add.text(width / 2, height / 2, 'GAME OVER', {
@@ -144,7 +145,9 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(1000);
         
         this.input.once('pointerdown', () => {
-            this.scene.start('TitleScene');
+            gameOverText.destroy();
+            restartText.destroy();
+            this.scene.restart(); // シーンを再起動
         });
     }
 
