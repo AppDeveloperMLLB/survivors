@@ -2,6 +2,10 @@ import Enemy from '../entities/Enemy';
 import HealthBar from '../ui/HealthBar';
 import ScoreDisplay from '../ui/ScoreDisplay';
 import ExperienceBar from '../ui/ExperienceBar';
+import PlayerStats from '../player/PlayerStats';
+import { SkillSystem } from '../skills/SkillSystem';
+import LevelUpMenu from '../ui/LevelUpMenu';
+import EnemyFactory from '../entities/enemies/EnemyFactory';
 
 export default class GameScene extends Phaser.Scene {
     private player!: Phaser.Physics.Arcade.Sprite;
@@ -12,6 +16,11 @@ export default class GameScene extends Phaser.Scene {
     private lastEnemySpawnTime: number = 0;
     private enemySpawnInterval: number = 2000;
 
+    // Player stats and skills
+    private playerStats: PlayerStats;
+    private skillSystem: SkillSystem;
+    private levelUpMenu!: LevelUpMenu;
+
     // UI Components
     private healthBar!: HealthBar;
     private scoreDisplay!: ScoreDisplay;
@@ -19,8 +28,13 @@ export default class GameScene extends Phaser.Scene {
     private isPaused: boolean = false;
     private pauseMenu!: Phaser.GameObjects.Container;
 
+    private waveTimer: number = 0;
+    private waveDuration: number = 30000; // 30 seconds per wave
+
     constructor() {
         super({ key: 'GameScene' });
+        this.playerStats = new PlayerStats();
+        this.skillSystem = new SkillSystem();
     }
 
     preload() {
@@ -48,6 +62,7 @@ export default class GameScene extends Phaser.Scene {
         this.healthBar = new HealthBar(this, 10, 10);
         this.scoreDisplay = new ScoreDisplay(this, 10, 70);
         this.experienceBar = new ExperienceBar(this);
+        this.levelUpMenu = new LevelUpMenu(this);
 
         // Setup collision between player and enemies
         this.physics.add.overlap(
@@ -69,7 +84,7 @@ export default class GameScene extends Phaser.Scene {
             this.togglePause();
         });
 
-        // Create pause menu (initially hidden)
+        // Create pause menu
         this.createPauseMenu();
     }
 
@@ -151,10 +166,39 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    update(time: number) {
+    private handleExperienceGain(amount: number): void {
+        const levelUps = this.playerStats.addExperience(amount);
+        this.experienceBar.setProgress(this.playerStats.getExperienceProgress());
+        
+        if (levelUps > 0) {
+            this.handleLevelUp(levelUps);
+        }
+    }
+
+    private handleLevelUp(remainingLevelUps: number): void {
+        this.isPaused = true;
+        this.physics.pause();
+        
+        const skills = this.skillSystem.getRandomSkills(3);
+        this.levelUpMenu.showSkillChoices(skills, (selectedSkill) => {
+            selectedSkill.apply(this.playerStats);
+            
+            remainingLevelUps--;
+            if (remainingLevelUps > 0) {
+                // まだレベルアップが残っている場合、再帰的に処理
+                this.handleLevelUp(remainingLevelUps);
+            } else {
+                // 全てのレベルアップ処理が完了
+                this.isPaused = false;
+                this.physics.resume();
+            }
+        });
+    }
+
+    update(time: number, delta: number) {
         if (this.isPaused) return;
 
-        const speed = 200;
+        const speed = this.playerStats.getStat('speed');
         this.player.setVelocity(0);
 
         // Horizontal movement
@@ -177,14 +221,20 @@ export default class GameScene extends Phaser.Scene {
             body.velocity.normalize().scale(speed);
         }
 
+        // Wave management
+        this.waveTimer += delta;
+        if (this.waveTimer >= this.waveDuration) {
+            this.waveTimer = 0;
+            EnemyFactory.increaseDifficulty();
+        }
+
         // Spawn enemies
         if (time - this.lastEnemySpawnTime >= this.enemySpawnInterval) {
             this.spawnEnemy();
             this.lastEnemySpawnTime = time;
-            // Add score when enemy is spawned (temporary)
+            // Add score and experience when enemy is spawned
             this.scoreDisplay.addScore(10);
-            // Add experience when enemy is spawned (temporary)
-            this.experienceBar.addExperience(20);
+            this.handleExperienceGain(20);
         }
     }
 
@@ -212,7 +262,7 @@ export default class GameScene extends Phaser.Scene {
                 break;
         }
 
-        const enemy = new Enemy(this, x, y, 'enemy', this.player);
+        const enemy = EnemyFactory.createEnemy(this, x, y, this.player);
         this.enemies.add(enemy);
     }
 }

@@ -13,13 +13,16 @@ export default class PlayerStats {
         damage: 1
     };
 
-    addExperience(amount: number): boolean {
+    addExperience(amount: number): number {
         this.experience += amount;
-        if (this.experience >= this.experienceToNextLevel) {
+        let levelUps = 0;
+
+        while (this.experience >= this.experienceToNextLevel) {
             this.levelUp();
-            return true;
+            levelUps++;
         }
-        return false;
+
+        return levelUps;  // レベルアップした回数を返す
     }
 
     private levelUp(): void {
