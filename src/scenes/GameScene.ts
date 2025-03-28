@@ -1,6 +1,12 @@
+import Enemy from '../entities/Enemy';
+
 export default class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private enemies!: Phaser.GameObjects.Group;
+  private playerHealth: number = 100;
+  private lastEnemySpawnTime: number = 0;
+  private enemySpawnInterval: number = 2000; // 2秒ごとに敵を生成
 
   constructor() {
     super({ key: 'GameScene' });
@@ -9,6 +15,8 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     // Load player sprite
     this.load.image('player', 'src/assets/player.png');
+    // Load enemy sprite (一時的に player.png を使用)
+    this.load.image('enemy', 'src/assets/player.png');
   }
 
   create() {
@@ -17,13 +25,75 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
 
     // Setup keyboard controls
-    this.cursors = this.input.keyboard.createCursorKeys();
+    if (this.input.keyboard) {
+      this.cursors = this.input.keyboard.createCursorKeys();
+    } else {
+      console.warn('Keyboard input is not available.');
+    }
 
     // Add WASD keys
-    this.input.keyboard.addKeys('W,S,A,D');
+    if (this.input.keyboard) {
+      this.input.keyboard.addKeys('W,S,A,D');
+    } else {
+      console.warn('Keyboard input is not available.');
+    }
+
+    // Initialize enemies group
+    this.enemies = this.add.group({
+      classType: Enemy,
+      runChildUpdate: true
+    });
+
+    // Setup collision between player and enemies
+    this.physics.add.overlap(
+      this.player,
+      this.enemies,
+      this.handlePlayerEnemyCollision,
+      undefined,
+      this
+    );
   }
 
-  update() {
+  private handlePlayerEnemyCollision(player: Phaser.GameObjects.GameObject, enemy: Phaser.GameObjects.GameObject) {
+    const damage = 10;
+    this.playerHealth -= damage;
+
+    if (this.playerHealth <= 0) {
+      // Game Over
+      this.scene.pause();
+      console.log('Game Over');
+    }
+  }
+
+  private spawnEnemy() {
+    const padding = 50;
+    const spawnSide = Phaser.Math.Between(0, 3); // 0: top, 1: right, 2: bottom, 3: left
+    let x, y;
+
+    switch (spawnSide) {
+      case 0: // top
+        x = Phaser.Math.Between(padding, this.game.canvas.width - padding);
+        y = -padding;
+        break;
+      case 1: // right
+        x = this.game.canvas.width + padding;
+        y = Phaser.Math.Between(padding, this.game.canvas.height - padding);
+        break;
+      case 2: // bottom
+        x = Phaser.Math.Between(padding, this.game.canvas.width - padding);
+        y = this.game.canvas.height + padding;
+        break;
+      default: // left
+        x = -padding;
+        y = Phaser.Math.Between(padding, this.game.canvas.height - padding);
+        break;
+    }
+
+    const enemy = new Enemy(this, x, y, 'enemy', this.player);
+    this.enemies.add(enemy);
+  }
+
+  update(time: number) {
     const speed = 200;
     const keyboard = this.input.keyboard;
 
@@ -47,6 +117,12 @@ export default class GameScene extends Phaser.Scene {
     // Normalize diagonal movement
     if (this.player.body.velocity.x !== 0 && this.player.body.velocity.y !== 0) {
       this.player.body.velocity.normalize().scale(speed);
+    }
+
+    // Spawn enemies
+    if (time - this.lastEnemySpawnTime >= this.enemySpawnInterval) {
+      this.spawnEnemy();
+      this.lastEnemySpawnTime = time;
     }
   }
 }
