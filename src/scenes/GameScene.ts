@@ -3,6 +3,7 @@ import Enemy from '../entities/Enemy';
 export default class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private keys: { [key: string]: Phaser.Input.Keyboard.Key } = {};
   private enemies!: Phaser.GameObjects.Group;
   private playerHealth: number = 100;
   private lastEnemySpawnTime: number = 0;
@@ -25,18 +26,8 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
 
     // Setup keyboard controls
-    if (this.input.keyboard) {
-      this.cursors = this.input.keyboard.createCursorKeys();
-    } else {
-      console.warn('Keyboard input is not available.');
-    }
-
-    // Add WASD keys
-    if (this.input.keyboard) {
-      this.input.keyboard.addKeys('W,S,A,D');
-    } else {
-      console.warn('Keyboard input is not available.');
-    }
+    this.cursors = this.input.keyboard!.createCursorKeys();
+    this.keys = this.input.keyboard!.addKeys('W,S,A,D') as { [key: string]: Phaser.Input.Keyboard.Key };
 
     // Initialize enemies group
     this.enemies = this.add.group({
@@ -48,21 +39,16 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.overlap(
       this.player,
       this.enemies,
-      this.handlePlayerEnemyCollision,
+      (_obj1, _obj2) => {
+        this.playerHealth -= 10;
+        if (this.playerHealth <= 0) {
+          this.scene.pause();
+          console.log('Game Over');
+        }
+      },
       undefined,
       this
     );
-  }
-
-  private handlePlayerEnemyCollision(player: Phaser.GameObjects.GameObject, enemy: Phaser.GameObjects.GameObject) {
-    const damage = 10;
-    this.playerHealth -= damage;
-
-    if (this.playerHealth <= 0) {
-      // Game Over
-      this.scene.pause();
-      console.log('Game Over');
-    }
   }
 
   private spawnEnemy() {
@@ -95,28 +81,28 @@ export default class GameScene extends Phaser.Scene {
 
   update(time: number) {
     const speed = 200;
-    const keyboard = this.input.keyboard;
 
     // Reset velocity
     this.player.setVelocity(0);
 
     // Horizontal movement
-    if (this.cursors.left.isDown || keyboard.keys['A']?.isDown) {
+    if (this.cursors.left.isDown || this.keys['A']?.isDown) {
       this.player.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown || keyboard.keys['D']?.isDown) {
+    } else if (this.cursors.right.isDown || this.keys['D']?.isDown) {
       this.player.setVelocityX(speed);
     }
 
     // Vertical movement
-    if (this.cursors.up.isDown || keyboard.keys['W']?.isDown) {
+    if (this.cursors.up.isDown || this.keys['W']?.isDown) {
       this.player.setVelocityY(-speed);
-    } else if (this.cursors.down.isDown || keyboard.keys['S']?.isDown) {
+    } else if (this.cursors.down.isDown || this.keys['S']?.isDown) {
       this.player.setVelocityY(speed);
     }
 
     // Normalize diagonal movement
-    if (this.player.body.velocity.x !== 0 && this.player.body.velocity.y !== 0) {
-      this.player.body.velocity.normalize().scale(speed);
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    if (body && body.velocity.x !== 0 && body.velocity.y !== 0) {
+      body.velocity.normalize().scale(speed);
     }
 
     // Spawn enemies
