@@ -15,7 +15,9 @@ export default class EnemyFactory {
         }
 
         // 通常の敵キャラクターの場合
-        return new Enemy(scene, x, y, 'enemy', target, enemyType);
+        const enemy = new Enemy(scene, x, y, 'enemy', target, enemyType);
+        
+        return enemy;
     }
 
     private static selectEnemyType(): EnemyConfig {

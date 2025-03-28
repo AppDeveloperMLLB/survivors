@@ -60,12 +60,12 @@ export default class BossUI extends Phaser.GameObjects.Container {
         const barWidth = 296 * healthPercentage;
         
         let color: number;
-        if (healthPercentage > 0.5) {
-            color = 0xff0000; // 赤
-        } else if (healthPercentage > 0.25) {
-            color = 0xff6600; // オレンジ
+        if (healthPercentage > 0.6) {
+            color = 0x00ff00; // Green for high health
+        } else if (healthPercentage > 0.3) {
+            color = 0xffff00; // Yellow for medium health
         } else {
-            color = 0xff0000; // 赤（激怒状態）
+            color = 0xff0000; // Red for low health (and rage state)
         }
         
         this.healthBar.fillStyle(color);

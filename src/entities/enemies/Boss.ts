@@ -33,17 +33,17 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
             {
                 name: 'Rush',
                 cooldown: 5000,
-                execute: (boss) => this.rushAttack()
+                execute: () => this.rushAttack()
             },
             {
                 name: 'SummonMinions',
                 cooldown: 15000,
-                execute: (boss) => this.summonMinions()
+                execute: () => this.summonMinions()
             },
             {
                 name: 'CircularAttack',
                 cooldown: 8000,
-                execute: (boss) => this.circularAttack()
+                execute: () => this.circularAttack()
             }
         ];
 
@@ -81,7 +81,7 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
         this.attackPatterns.push({
             name: 'RageMode',
             cooldown: 20000,
-            execute: (boss) => this.rageMode()
+            execute: () => this.rageMode()
         });
     }
 
@@ -201,7 +201,8 @@ export default class Boss extends Phaser.Physics.Arcade.Sprite {
     preUpdate(time: number, delta: number): void {
         super.preUpdate(time, delta);
 
-        if (this.body.velocity.x === 0 && this.body.velocity.y === 0) {
+        const body = this.body as Phaser.Physics.Arcade.Body | null;
+        if (body && body.velocity.x === 0 && body.velocity.y === 0) {
             // 通常移動（ターゲットに向かって移動）
             const angle = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
             this.setVelocity(
