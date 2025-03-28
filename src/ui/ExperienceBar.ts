@@ -24,6 +24,11 @@ export default class ExperienceBar {
         this.draw();
     }
 
+    setProgress(progress: number): void {
+        this.currentXP = progress * this.nextLevelXP;
+        this.draw();
+    }
+
     private levelUp(): void {
         this.currentXP -= this.nextLevelXP;
         this.level++;
