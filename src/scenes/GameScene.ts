@@ -6,18 +6,18 @@ import PlayerStats from '../player/PlayerStats';
 import { SkillSystem } from '../skills/SkillSystem';
 import LevelUpMenu from '../ui/LevelUpMenu';
 import EnemyFactory from '../entities/enemies/EnemyFactory';
+import { PlayerCharacterConfig } from '../player/PlayerCharacters';
 
 export default class GameScene extends Phaser.Scene {
     private player!: Phaser.Physics.Arcade.Sprite;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private keys: { [key: string]: Phaser.Input.Keyboard.Key } = {};
     private enemies!: Phaser.GameObjects.Group;
-    private playerHealth: number = 100;
     private lastEnemySpawnTime: number = 0;
     private enemySpawnInterval: number = 2000;
 
     // Player stats and skills
-    private playerStats: PlayerStats;
+    private playerStats!: PlayerStats;
     private skillSystem: SkillSystem;
     private levelUpMenu!: LevelUpMenu;
 
@@ -33,8 +33,11 @@ export default class GameScene extends Phaser.Scene {
 
     constructor() {
         super({ key: 'GameScene' });
-        this.playerStats = new PlayerStats();
         this.skillSystem = new SkillSystem();
+    }
+
+    init(data: { selectedCharacter: PlayerCharacterConfig }) {
+        this.playerStats = new PlayerStats(data.selectedCharacter);
     }
 
     preload() {
@@ -64,14 +67,24 @@ export default class GameScene extends Phaser.Scene {
         this.experienceBar = new ExperienceBar(this);
         this.levelUpMenu = new LevelUpMenu(this);
 
+        // Initialize health bar with character's max health and current health
+        this.healthBar.setMaxHealth(this.playerStats.getMaxHealth());
+        this.healthBar.setHealth(this.playerStats.getCurrentHealth());
+
+        // Initialize experience bar
+        this.experienceBar.setLevel(this.playerStats.getLevel());
+        this.experienceBar.setExperience(this.playerStats.getExperience());
+        this.experienceBar.setNextLevelExperience(this.playerStats.getExperienceToNextLevel());
+
         // Setup collision between player and enemies
         this.physics.add.overlap(
             this.player,
             this.enemies,
             (_obj1, _obj2) => {
-                this.playerHealth -= 10;
-                this.healthBar.setHealth(this.playerHealth);
-                if (this.playerHealth <= 0) {
+                // Use PlayerStats methods for health management
+                this.playerStats.takeDamage(10);
+                this.healthBar.setHealth(this.playerStats.getCurrentHealth());
+                if (this.playerStats.getCurrentHealth() <= 0) {
                     this.gameOver();
                 }
             },
@@ -168,7 +181,11 @@ export default class GameScene extends Phaser.Scene {
 
     private handleExperienceGain(amount: number): void {
         const levelUps = this.playerStats.addExperience(amount);
-        this.experienceBar.setProgress(this.playerStats.getExperienceProgress());
+        
+        // Update ExperienceBar with current values from PlayerStats
+        this.experienceBar.setLevel(this.playerStats.getLevel());
+        this.experienceBar.setExperience(this.playerStats.getExperience());
+        this.experienceBar.setNextLevelExperience(this.playerStats.getExperienceToNextLevel());
         
         if (levelUps > 0) {
             this.handleLevelUp(levelUps);

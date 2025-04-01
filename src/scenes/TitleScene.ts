@@ -22,7 +22,7 @@ export default class TitleScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // Add start button
-        const startButton = this.add.text(width / 2, height * 2 / 3, 'Click to Start', {
+        const startButton = this.add.text(width / 2, height * 2 / 3, 'Start Game', {
             fontSize: '32px',
             color: '#ffffff',
             stroke: '#000000',
@@ -40,9 +40,9 @@ export default class TitleScene extends Phaser.Scene {
             startButton.setScale(1);
         });
 
-        // Start game on click
+        // Start character selection on click
         startButton.on('pointerdown', () => {
-            this.scene.start('GameScene');
+            this.scene.start('CharacterSelectScene');
         });
     }
 }
