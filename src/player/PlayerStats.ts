@@ -38,10 +38,12 @@ export default class PlayerStats {
 
     takeDamage(amount: number): void {
         this.setHealth(this.currentHealth - amount);
-    }
-
-    heal(amount: number): void {
+    }    heal(amount: number): void {
         this.setHealth(this.currentHealth + amount);
+    }
+    
+    getCharacterId(): string {
+        return this.character.id;
     }
 
     addExperience(amount: number): number {
