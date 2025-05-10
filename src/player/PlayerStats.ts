@@ -34,14 +34,15 @@ export default class PlayerStats {
     setHealth(amount: number): void {
         const maxHealth = this.getMaxHealth();
         this.currentHealth = Phaser.Math.Clamp(amount, 0, maxHealth);
-    }
-
-    takeDamage(amount: number): void {
+    }    takeDamage(amount: number): void {
         this.setHealth(this.currentHealth - amount);
     }
-
+    
     heal(amount: number): void {
         this.setHealth(this.currentHealth + amount);
+    }    
+    getCharacterId(): string {
+        return this.character.key;
     }
 
     addExperience(amount: number): number {

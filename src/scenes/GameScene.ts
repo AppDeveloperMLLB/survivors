@@ -7,6 +7,7 @@ import { SkillSystem } from '../skills/SkillSystem';
 import LevelUpMenu from '../ui/LevelUpMenu';
 import EnemyFactory from '../entities/enemies/EnemyFactory';
 import { PlayerCharacterConfig } from '../player/PlayerCharacters';
+import { AttackExecutor } from '../skills/AttackManager';
 
 export default class GameScene extends Phaser.Scene {
     private player!: Phaser.Physics.Arcade.Sprite;
@@ -20,6 +21,7 @@ export default class GameScene extends Phaser.Scene {
     private playerStats!: PlayerStats;
     private skillSystem: SkillSystem;
     private levelUpMenu!: LevelUpMenu;
+    private attackExecutor!: AttackExecutor;
 
     // UI Components
     private healthBar!: HealthBar;
@@ -34,9 +36,7 @@ export default class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
         this.skillSystem = new SkillSystem();
-    }
-
-    init(data: { selectedCharacter: PlayerCharacterConfig }) {
+    }    init(data: { selectedCharacter: PlayerCharacterConfig }) {
         this.playerStats = new PlayerStats(data.selectedCharacter);
     }
 
@@ -45,11 +45,13 @@ export default class GameScene extends Phaser.Scene {
         this.load.setBaseURL(window.location.origin);
         this.load.svg('player', '/assets/player.svg');
         this.load.svg('enemy', '/assets/enemy.svg');
-    }
-
-    create() {
+    }    create() {
         this.player = this.physics.add.sprite(400, 300, 'player');
         this.player.setCollideWorldBounds(true);
+
+        // Initialize attack system
+        this.attackExecutor = new AttackExecutor(this, this.playerStats.getCharacterId());
+        this.attackExecutor.startAttackLoop();
 
         // Setup keyboard controls
         this.cursors = this.input.keyboard!.createCursorKeys();
@@ -190,26 +192,44 @@ export default class GameScene extends Phaser.Scene {
         if (levelUps > 0) {
             this.handleLevelUp(levelUps);
         }
-    }
-
-    private handleLevelUp(remainingLevelUps: number): void {
+    }    private handleLevelUp(remainingLevelUps: number): void {
         this.isPaused = true;
         this.physics.pause();
         
-        const skills = this.skillSystem.getRandomSkills(3);
-        this.levelUpMenu.showSkillChoices(skills, (selectedSkill) => {
-            selectedSkill.apply(this.playerStats);
-            
-            remainingLevelUps--;
-            if (remainingLevelUps > 0) {
-                // まだレベルアップが残っている場合、再帰的に処理
-                this.handleLevelUp(remainingLevelUps);
-            } else {
-                // 全てのレベルアップ処理が完了
-                this.isPaused = false;
-                this.physics.resume();
-            }
-        });
+        // レベルアップ時は通常のスキルか攻撃スキルの選択肢を提供する
+        // ランダムで決定（50%の確率で攻撃スキルの選択肢を表示）
+        const isAttackUpgrade = Math.random() > 0.5;
+        
+        if (isAttackUpgrade && this.attackExecutor) {
+            // 攻撃のアップグレード選択肢を表示
+            const attackOptions = this.attackExecutor.getAttackManager().generateLevelUpOptions();
+            this.levelUpMenu.showAttackChoices(attackOptions, (selectedAttack) => {
+                this.attackExecutor.updateAttack(selectedAttack);
+                
+                // Process remaining level ups or resume the game
+                this.handleRemainingLevelUps(remainingLevelUps - 1);
+            });
+        } else {
+            // 通常のスキルアップグレード選択肢を表示
+            const skills = this.skillSystem.getRandomSkills(3);
+            this.levelUpMenu.showSkillChoices(skills, (selectedSkill) => {
+                selectedSkill.apply(this.playerStats);
+                
+                // Process remaining level ups or resume the game
+                this.handleRemainingLevelUps(remainingLevelUps - 1);
+            });
+        }
+    }
+    
+    private handleRemainingLevelUps(remainingLevelUps: number): void {
+        if (remainingLevelUps > 0) {
+            // まだレベルアップが残っている場合、再帰的に処理
+            this.handleLevelUp(remainingLevelUps);
+        } else {
+            // 全てのレベルアップ処理が完了
+            this.isPaused = false;
+            this.physics.resume();
+        }
     }
 
     update(time: number, delta: number) {
@@ -281,5 +301,13 @@ export default class GameScene extends Phaser.Scene {
 
         const enemy = EnemyFactory.createEnemy(this, x, y, this.player);
         this.enemies.add(enemy);
+    }    destroy(): void {
+        // Clean up all timers and systems when the scene is destroyed
+        if (this.attackExecutor) {
+            this.attackExecutor.destroy();
+        }
+        
+        // Call the parent destroy method
+        super.destroy();
     }
 }
